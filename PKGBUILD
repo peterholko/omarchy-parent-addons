@@ -1,6 +1,6 @@
 pkgbase=omarchy-parent-addons
 pkgname=(omarchy-parent-addons-core omarchy-parent-addons-dns omarchy-parent-addons-browsing)
-pkgver=0.1.0
+pkgver=0.1.1
 pkgrel=1
 arch=(any)
 url='https://github.com/peterholko/omarchy-parent-addons'

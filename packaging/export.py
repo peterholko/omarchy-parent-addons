@@ -33,7 +33,7 @@ def export(destination):
 
 Omarchy Quattro plugin for a child installation configured by [PR9750](https://github.com/omacom/omarchy/pull/9750). It uses the existing OS parent password through polkit. No password is stored in the plugin.
 
-This repository contains the user interface. Version {version} requires the separately installed `omarchy-parent-addons-{feature}` and `omarchy-parent-addons-core` packages from [backend release v{version}]({BACKEND}/releases/tag/v{version}). The backend does not depend on the Omarchy Kids distribution or replace Omarchy. Linux installation and authentication checks are still pending; see the [validation record]({BACKEND}/blob/v{version}/VALIDATION.md).
+This repository contains the user interface. It requires the separately installed `omarchy-parent-addons-{feature}` and `omarchy-parent-addons-core` packages. The [current backend release]({BACKEND}/releases/tag/v{version}) includes matching package-based UI copies. Plugin v0.1.1 also works with the v0.1.0 backend; that backend does not need to be rebuilt for the panel visibility fix. The backend does not depend on the Omarchy Kids distribution or replace Omarchy. Linux installation and authentication checks are still pending; see the [validation record]({BACKEND}/blob/v{version}/VALIDATION.md).
 
 ## Install
 
@@ -67,6 +67,8 @@ omarchy restart shell
 ```
 
 A plugin update cannot upgrade its root-owned backend. Package-based UI copies use the backend release's `./plugins install {feature} --upgrade` instead of the Git updater.
+
+Version 0.1.1 fixes the bar button opening an invisible window. For existing Git installs with the v0.1.0 backend, the two commands above are sufficient for this fix.
 
 ## Disable and remove
 

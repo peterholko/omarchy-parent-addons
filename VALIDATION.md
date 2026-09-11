@@ -11,6 +11,7 @@ Development and verification were performed on the Mac against the PR9750 source
 - The real PR9750 command router dispatches `omarchy parent dns status` to an independently installed command on PATH, without source changes to the router or `omarchy-parent`.
 - Both real Qt Quick controls views were rendered at normal and compact sizes and visually inspected. Interaction tests cover status, DNS mode and list actions, explicit logging consent, per-account reports, busy controls and private-data clearing.
 - Both real plugin entry points load in Qt with inert Quickshell transport/theme stubs. Tests check the exact `pkexec` command, no action on panel open, private report expiry, clearing on close, rejection of late output after closing, and cancelled authentication feedback. The harness executes no privileged command.
+- Version 0.1.1 adds a regression check for the actual controls window. With the panel Item outside any visual window, as in Omarchy's panel loader, v0.1.0 set `opened` but left the window invisible. Explicitly clearing the transient parent makes the window visible and exposed. The test verifies display, close and reopen, and captures both real panel windows for visual inspection. The earlier tests exercised the controls and lifecycle state without checking whether the panel window appeared.
 
 Preview screenshots use synthetic browser history and status text. They are UI evidence, not laptop/network evidence.
 

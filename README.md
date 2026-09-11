@@ -30,7 +30,7 @@ Run these in a terminal as the normal desktop user (for example, `linnea`), with
 
 ```bash
 omarchy pkg add base-devel python
-git clone --branch v0.1.0 --depth 1 https://github.com/peterholko/omarchy-parent-addons.git
+git clone --branch v0.1.1 --depth 1 https://github.com/peterholko/omarchy-parent-addons.git
 cd omarchy-parent-addons
 ./test && ./build
 ```
@@ -103,6 +103,14 @@ omarchy parent browsing apply
 These commands leave disabled modules disabled. Shared Firefox policy ownership preserves unrelated keys and the other add-on when a feature is disabled. Chromium policies have separate feature-owned files.
 
 ## Upgrade
+
+Version 0.1.1 fixes DNS and History panels staying invisible when opened from the bar. If you already have the v0.1.0 backend and installed the Git plugins, update just the interfaces; no backend rebuild is needed for this fix:
+
+```bash
+omarchy plugin update io.github.peterholko.parent-dns
+omarchy plugin update io.github.peterholko.parent-browsing
+omarchy restart shell
+```
 
 Download the next published backend source release into a new directory, review its release notes, then run there:
 

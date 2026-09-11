@@ -71,6 +71,9 @@ Item {
 
   Window {
     id: window
+    // The host loads this Item outside a window's visual tree. Without an
+    // explicit top-level window, Qt defers showing it indefinitely.
+    transientParent: null
     visible: root.opened
     width: 760
     height: root.feature === "dns" ? 770 : 690
