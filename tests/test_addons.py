@@ -148,6 +148,58 @@ class DNS(Scratch):
     self.assertIn('youtube.com/shorts', result.stdout)
     self.assertNotIn('address=/youtube.com/shorts', result.stdout)
 
+  def test_whole_domain_denials_reach_browser_policies(self):
+    chromium = self.root / 'etc/chromium/policies/managed'
+    chromium.mkdir(parents=True)
+    firefox = self.root / 'usr/lib/firefox/distribution/policies.json'
+    firefox.parent.mkdir(parents=True)
+    baseline = {'policies': {'DisablePrivateBrowsing': True, 'Homepage': {'URL': 'https://school.example'}}}
+    firefox.write_text(json.dumps(baseline))
+    self.shell('dns', 'ensure_lists; list_add "$DENY_FILE" youtube.com; list_add "$DENY_FILE" example.org/shorts; install_browser_policies')
+    policy = json.loads((chromium / 'omarchy-parent-dns.json').read_text())
+    self.assertEqual(policy['URLBlocklist'], ['youtube.com', 'example.org/shorts'])
+    rules = json.loads(firefox.read_text())['policies']
+    self.assertEqual(rules['WebsiteFilter']['Block'], ['*://youtube.com/*', '*://*.youtube.com/*', '*://example.org/shorts*', '*://*.example.org/shorts*'])
+    self.assertTrue(rules['DisablePrivateBrowsing'])
+    self.shell('dns', 'remove_browser_policies')
+    self.assertFalse((chromium / 'omarchy-parent-dns.json').exists())
+    self.assertEqual(json.loads(firefox.read_text()), baseline)
+
+  def test_page_exceptions_cannot_override_whole_domain_denials(self):
+    result = self.shell('dns', 'ensure_lists; list_add "$DENY_FILE" youtube.com; list_add "$ALLOW_FILE" youtube.com/school; list_add "$ALLOW_FILE" www.youtube.com/school; list_add "$ALLOW_FILE" notyoutube.com/school; list_add "$ALLOW_FILE" school.example/lesson; chromium_policy_json')
+    self.assertEqual(json.loads(result.stdout)['URLAllowlist'], ['notyoutube.com/school', 'school.example/lesson'])
+
+  def test_saving_denial_while_off_reports_that_filtering_is_disabled(self):
+    result = self.shell('dns', 'systemctl() { echo UNEXPECTED-SERVICE; return 1; }; resolvectl() { echo UNEXPECTED-CACHE; return 1; }; edit_lists deny youtube.com')
+    self.assertIn('filtering is not enabled', result.stdout)
+    self.assertIn('omarchy parent dns denylist', result.stdout)
+    self.assertNotIn('UNEXPECTED', result.stdout)
+    self.assertNotIn('policies updated', result.stdout)
+    self.assertIn('youtube.com', (self.config / 'dns.deny').read_text())
+
+  def test_active_list_edits_flush_the_downstream_resolver_cache(self):
+    result = self.shell('dns', '''
+conf_set dns denylist
+systemctl() { printf 'systemctl %s\\n' "$*" >>"$SYSROOT/calls"; }
+resolvectl() { printf 'resolvectl %s\\n' "$*" >>"$SYSROOT/calls"; }
+edit_lists deny youtube.com
+''')
+    self.assertEqual((self.root / 'calls').read_text().splitlines(), ['systemctl restart omarchy-parent-dns.service', 'resolvectl flush-caches'])
+    self.assertIn('address=/youtube.com/', (self.config / 'dnsmasq.conf').read_text())
+    self.assertIn('Resolver cache cleared and browser policies updated', result.stdout)
+
+  def test_reapply_flushes_old_cached_answers(self):
+    self.shell('dns', '''
+conf_set dns denylist
+systemd_running() { return 0; }
+firewall_closed() { return 0; }
+systemctl() { printf 'systemctl %s\\n' "$*" >>"$SYSROOT/calls"; }
+resolvectl() { printf 'resolvectl %s\\n' "$*" >>"$SYSROOT/calls"; }
+status() { echo "Fixture status"; }
+apply
+''')
+    self.assertEqual((self.root / 'calls').read_text().splitlines()[-2:], ['systemctl restart omarchy-parent-dns.service', 'resolvectl flush-caches'])
+
   def test_firewall_restores_other_rules(self):
     directory = self.root / 'etc/ufw'
     directory.mkdir(parents=True)

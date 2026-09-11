@@ -53,7 +53,7 @@ Accept Omarchy's plugin confirmation and select the right bar section when promp
 
 Installing or enabling the plugin does not enable filtering or collection. Use the explicit controls inside its panel. Private reports require parent authentication and clear when the window closes or after two minutes. DNS filtering changes this laptop's resolver, firewall and supported browser policies. Browsing logs are opt-in; tell the child when collection is enabled.
 
-{'DNS requires an already active UFW firewall. It defaults to Cloudflare for Families upstream; Network DNS is available in the controls. Enable Denylist explicitly to begin filtering.' if feature == 'dns' else 'The first collection includes existing history, followed by collection every minute. Supported history databases are Chromium, Chrome, Brave, Edge and Firefox. The collector records URLs and titles; it does not capture every network request or establish time spent watching a video.'}
+{'DNS requires an already active UFW firewall. It defaults to Cloudflare for Families upstream; Network DNS is available in the controls. Enable Denylist explicitly to begin filtering. Backend v0.1.2 also adds whole-domain denials to browser URL policies and clears the system DNS cache after list changes. Quit and reopen the browser after policy changes, and check URLBlocklist in chrome://policy or WebsiteFilter in about:policies. Existing pages and open connections are not automatically closed.' if feature == 'dns' else 'The first collection includes existing history, followed by collection every minute. Supported history databases are Chromium, Chrome, Brave, Edge and Firefox. The collector records URLs and titles; it does not capture every network request or establish time spent watching a video.'}
 
 The [backend README]({BACKEND}#enable-features-explicitly) documents terminal commands, browser support, policy limitations and the manual `apply` step after installing or reinstalling browsers.
 
@@ -69,6 +69,8 @@ omarchy restart shell
 A plugin update cannot upgrade its root-owned backend. Package-based UI copies use the backend release's `./plugins install {feature} --upgrade` instead of the Git updater.
 
 Version 0.1.1 fixes the bar button opening an invisible window. For existing Git installs with the v0.1.0 backend, the two commands above are sufficient for this fix.
+
+The DNS domain-blocking changes in v0.1.2 require the [backend upgrade]({BACKEND}#upgrade). Updating a shell plugin alone cannot change DNS behavior. Existing v0.1.1 interfaces can use the fixed v0.1.2 backend.
 
 ## Disable and remove
 

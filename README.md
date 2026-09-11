@@ -30,7 +30,7 @@ Run these in a terminal as the normal desktop user (for example, `linnea`), with
 
 ```bash
 omarchy pkg add base-devel python
-git clone --branch v0.1.1 --depth 1 https://github.com/peterholko/omarchy-parent-addons.git
+git clone --branch v0.1.2 --depth 1 https://github.com/peterholko/omarchy-parent-addons.git
 cd omarchy-parent-addons
 ./test && ./build
 ```
@@ -74,6 +74,10 @@ omarchy parent browsing on --user "$(id -un)"
 
 DNS changes this laptop's resolver, adds its own marked blocks to the existing UFW rules, and installs managed browser policies. It requires UFW to be active before it changes DNS; it does not enable the firewall for you. The default upstream is Cloudflare for Families. Choose Network DNS in the plugin, or run `omarchy parent dns upstream auto`, when the local network's resolver is needed. Enabling allowlist mode requires choosing that mode explicitly.
 
+Adding a domain to a list does not turn filtering on. In the DNS panel, choose **Denylist** under **Change mode**, then **Apply mode**, or use the command above. When filtering is on, a denied domain such as `youtube.com` is refused by DNS and added to the supported browsers' URL block policies, including its subdomains and paths. An entry such as `youtube.com/shorts` goes only to the browser policy because DNS cannot distinguish paths. Page exceptions do not override a whole-domain denial.
+
+List changes clear the system resolver cache. Quit and reopen the browser after browser policy changes; the add-on does not close already loaded pages, ongoing video streams or existing browser connections. In Chromium, check `chrome://policy` and use **Reload policies**; `URLBlocklist` should contain the denied domain or path with status **OK**. In Firefox, check `about:policies`. The backend status lists policy files on disk; it cannot prove that a running browser has loaded them.
+
 Browsing is opt-in. Tell the child when collection is enabled. The initial collection includes existing browser history; the timer then collects once a minute. Chromium, Google Chrome, Brave, Edge and Firefox history databases are supported. Firefox and Zen policies are supported, but Zen history discovery is not included in this extraction. The collector records URLs, titles and observed YouTube window titles; it is not a complete network capture or proof of time spent watching a video. Private browser windows are restricted by the supported browsers' managed policies. Alternate browsers, profiles or transport mechanisms can fall outside those policies.
 
 Useful commands:
@@ -103,6 +107,16 @@ omarchy parent browsing apply
 These commands leave disabled modules disabled. Shared Firefox policy ownership preserves unrelated keys and the other add-on when a feature is disabled. Chromium policies have separate feature-owned files.
 
 ## Upgrade
+
+Version 0.1.2 adds whole-domain denials to browser policies and clears the system resolver cache when lists change. **This requires the backend upgrade; updating only the shell plugin cannot apply it.** From an existing Git checkout of this backend, run as the normal desktop user:
+
+```bash
+git fetch origin tag v0.1.2
+git switch --detach v0.1.2
+./test && ./build && ./install --upgrade
+```
+
+The package upgrade reapplies an enabled DNS filter using its existing lists. An off filter stays off. Quit and reopen the browser afterward and verify `URLBlocklist` in `chrome://policy` or `WebsiteFilter` in `about:policies`. Existing v0.1.1 plugin interfaces work with this backend, so a plugin update is optional for this fix.
 
 Version 0.1.1 fixes DNS and History panels staying invisible when opened from the bar. If you already have the v0.1.0 backend and installed the Git plugins, update just the interfaces; no backend rebuild is needed for this fix:
 

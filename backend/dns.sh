@@ -39,7 +39,9 @@ allow, deny, remove
           first, so you can allow them. An entry with a path, such as
           youtube.com/shorts, is refused (or allowed) by the browser instead
           of the resolver, which cannot see paths: Chromium and Firefox
-          honor it by policy, under either mode.
+          honor it by policy, under either mode. Whole-domain denials are
+          also sent to those browsers. Quit and reopen the browser after
+          policy changes; already loaded pages are not closed automatically.
 history   The sites the laptop asked for in the last DAYS days (default 1),
           most often first, with when each was last seen: the resolver logs
           every lookup to the journal, which the kid cannot read or clear.
@@ -103,7 +105,7 @@ FIREWALL_END='# END OMARCHY PARENT ADDONS DNS'
 # covers m.youtube.com/shorts/anything. Firefox's WebsiteFilter takes match
 # patterns, so each entry becomes *://host/path* and *://*.host/path*.
 chromium_policy_json() {
-  OMARCHY_BLOCK="$(page_entries "$DENY_FILE")" OMARCHY_ALLOW="$(page_entries "$ALLOW_FILE")" python3 - <<'PY'
+  OMARCHY_BLOCK="$(read_list "$DENY_FILE")" OMARCHY_ALLOW="$(browser_allow_entries)" python3 - <<'PY'
 import json, os
 block = [e for e in os.environ.get("OMARCHY_BLOCK", "").split("\n") if e]
 allow = [e for e in os.environ.get("OMARCHY_ALLOW", "").split("\n") if e]
@@ -119,7 +121,10 @@ firefox_patterns() {
   while IFS= read -r entry; do
     [[ -n $entry ]] || continue
     host=${entry%%/*}
-    path=/${entry#*/}
+    path=/
+    if [[ $entry == */* ]]; then
+      path=/${entry#*/}
+    fi
     printf '*://%s%s*\n*://*.%s%s*\n' "$host" "$path" "$host" "$path"
   done
 }
@@ -139,7 +144,7 @@ systemd_running() {
 # A list file: one domain per line, # comments, case folded.
 read_list() {
   [[ -f $1 ]] || return 0
-  sed -e 's/#.*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' "$1" | grep -v '^$' | tr 'A-Z' 'a-z'
+  sed -e 's/#.*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e '/^$/d' "$1" | tr 'A-Z' 'a-z'
 }
 
 # What a parent types is often a URL: keep the host, drop www.
@@ -197,6 +202,27 @@ page_entries() {
 
 domain_entries() {
   read_list "$1" | grep -v '/' || true
+}
+
+# A page exception cannot bypass a whole-domain denial in the browser while
+# the same domain is refused by DNS. Other page exceptions stay independent.
+browser_allow_entries() {
+  local entry host denied blocked
+  local -a domains
+  mapfile -t domains < <(domain_entries "$DENY_FILE")
+  while IFS= read -r entry; do
+    host=${entry%%/*}
+    blocked=false
+    for denied in "${domains[@]}"; do
+      if [[ $host == $denied || $host == *.$denied ]]; then
+        blocked=true
+        break
+      fi
+    done
+    if [[ $blocked == "false" ]]; then
+      printf '%s\n' "$entry"
+    fi
+  done < <(page_entries "$ALLOW_FILE")
 }
 
 list_header() {
@@ -485,8 +511,8 @@ install_browser_policies() {
     [[ -d $dir ]] || continue
     printf '%s\n' "$policy" | install_text 644 "$dir/omarchy-parent-dns.json"
   done
-  block=$(page_entries "$DENY_FILE" | firefox_patterns | jq -R . | jq -s .)
-  exceptions=$(page_entries "$ALLOW_FILE" | firefox_patterns | jq -R . | jq -s .)
+  block=$(read_list "$DENY_FILE" | firefox_patterns | jq -R . | jq -s .)
+  exceptions=$(browser_allow_entries | firefox_patterns | jq -R . | jq -s .)
   local fragment
   fragment=$(jq -nc --argjson block "$block" --argjson exceptions "$exceptions" '{DNSOverHTTPS: {Enabled: false, Locked: true}} + (if ($block | length) > 0 then {WebsiteFilter: {Block: $block, Exceptions: $exceptions}} else {} end)')
   for file in "${FIREFOX_POLICY_FILES[@]}"; do
@@ -517,11 +543,12 @@ browser_report() {
   if (( ${#names[@]} + ${#offs[@]} == 0 )); then
     echo "Browsers: no DoH policy in place."
   else
-    echo "Browsers: DNS over HTTPS switched off by policy in ${names[@]+"${names[@]}"} ${offs[@]+"${offs[@]}"}"
+    echo "Browser policy files (DNS over HTTPS set to off): ${names[@]+"${names[@]}"} ${offs[@]+"${offs[@]}"}"
+    echo "Verify loaded policy values in chrome://policy or about:policies after restarting the browser."
   fi
-  local pages
-  pages=$(page_entries "$DENY_FILE" | grep -c . || true)
-  (( pages > 0 )) && echo "Pages refused by the browser: $pages (see: sudo omarchy-parent dns list)"
+  local entries
+  entries=$(list_count "$DENY_FILE")
+  (( entries > 0 )) && echo "Browser deny rules: $entries domains or paths (see: omarchy parent dns list). Restart the browser to load updated policies."
   return 0
 }
 
@@ -694,6 +721,13 @@ start_resolver() {
   systemctl reload-or-restart systemd-resolved.service
 }
 
+# Reload the filter and invalidate the downstream cache, including old
+# positive answers for newly denied names and old negatives for allowed ones.
+reload_resolver() {
+  systemctl restart "$UNIT"
+  resolvectl flush-caches
+}
+
 stop_resolver() {
   # Removing an installed but never enabled add-on must not restart the
   # laptop's resolver or NetworkManager.
@@ -750,14 +784,14 @@ apply() {
   fi
   systemctl daemon-reload
   systemctl enable "$UNIT" >/dev/null 2>&1 || true
-  systemctl restart "$UNIT"
+  reload_resolver
   status
 }
 
 apply_if_on() {
   [[ $(dns_mode) == "off" ]] && return 0
   write_dnsmasq_conf
-  systemctl restart "$UNIT"
+  reload_resolver
   install_browser_policies
 }
 
@@ -765,22 +799,19 @@ edit_lists() {
   local verb="$1" raw name
   shift
   (($#)) || fail "$verb takes at least one domain, or a domain with a path such as youtube.com/shorts"
-  local where
   for raw in "$@"; do
     name=$(normalize_entry "$raw")
     valid_entry "$name" || fail "'$raw' is not a domain name or a domain with a path (use example.com, or example.com/section)"
-    where="by the resolver"
-    [[ $name == */* ]] && where="by the browser"
     case "$verb" in
       allow)
         list_drop "$DENY_FILE" "$name"
         list_add "$ALLOW_FILE" "$name"
-        echo "Allowed $name $where."
+        echo "Added $name to the allow list."
         ;;
       deny)
         list_drop "$ALLOW_FILE" "$name"
         list_add "$DENY_FILE" "$name"
-        echo "Denied $name $where."
+        echo "Added $name to the deny list."
         ;;
       remove)
         list_drop "$ALLOW_FILE" "$name"
@@ -790,6 +821,12 @@ edit_lists() {
     esac
   done
   apply_if_on
+  if [[ $(dns_mode) == "off" ]]; then
+    echo "Web filter: off. The list was saved; filtering is not enabled. Run: omarchy parent dns denylist"
+  else
+    echo "Web filter: $(dns_mode). Resolver cache cleared and browser policies updated."
+    echo "Quit and reopen the browser to load updated policies. Already loaded pages and open connections are not closed by this command."
+  fi
 }
 
 # --- end filter ---
