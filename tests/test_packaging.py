@@ -45,7 +45,22 @@ class Packaging(unittest.TestCase):
         wrapper = destination / ('usr/bin/omarchy-parent-' + feature)
         self.assertTrue(wrapper.stat().st_mode & 0o111)
         plugin = destination / ('usr/share/omarchy-parent-addons/plugins/io.github.peterholko.parent-' + feature)
-        self.assertEqual(json.loads((plugin / 'manifest.json').read_text())['entryPoints']['panel'], 'Panel.qml')
+        manifest = json.loads((plugin / 'manifest.json').read_text())
+        self.assertEqual(manifest['kinds'], ['panel'])
+        self.assertEqual(manifest['entryPoints'], {'panel': 'Panel.qml'})
+        self.assertNotIn('barWidget', manifest)
+        self.assertFalse((plugin / 'BarWidget.qml').exists())
+
+  def test_export_removes_obsolete_bar_widgets(self):
+    destination = self.root / 'plugins'
+    for feature in ('dns', 'browsing'):
+      plugin = destination / ('io.github.peterholko.parent-' + feature)
+      plugin.mkdir(parents=True)
+      (plugin / 'BarWidget.qml').write_text('// Previous release widget\n')
+    exporter.export(destination)
+    for plugin in destination.iterdir():
+      self.assertFalse((plugin / 'BarWidget.qml').exists())
+      self.assertEqual(json.loads((plugin / 'manifest.json').read_text())['kinds'], ['panel'])
 
   def test_no_dependency_replaces_or_upgrades_pr_runtime(self):
     env = {**os.environ, 'PARENT_ADDONS_SOURCE': str(SOURCE), 'pkgdir': str(self.root / 'pkg')}

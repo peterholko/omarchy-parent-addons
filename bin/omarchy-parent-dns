@@ -1,9 +1,23 @@
 #!/bin/bash
 # omarchy:summary=Manage the standalone DNS filter with the parent password
-# omarchy:args=<status|denylist|allowlist|off|allow|deny|remove|list|log|history|upstream|apply> [VALUE ...]
+# omarchy:args=<ui|status|denylist|allowlist|off|allow|deny|remove|list|log|history|upstream|apply> [VALUE ...]
 # omarchy:requires-sudo=true
 set -euo pipefail
-if [[ ${1:-} == "--help" || ${1:-} == "-h" ]] || (( EUID == 0 )); then
+if [[ ${1:-} == "ui" ]]; then
+  if (( $# != 1 )); then
+    echo "Usage: omarchy parent dns ui" >&2
+    exit 2
+  fi
+  if (( EUID == 0 )); then
+    echo "Open the DNS panel as the desktop user, without sudo." >&2
+    exit 1
+  fi
+  result=$(omarchy-shell shell summon io.github.peterholko.parent-dns)
+  if [[ $result != "ok" ]]; then
+    echo "The DNS panel is unavailable. Install its plugin, then run: omarchy plugin enable io.github.peterholko.parent-dns" >&2
+    exit 1
+  fi
+elif [[ ${1:-} == "--help" || ${1:-} == "-h" ]] || (( EUID == 0 )); then
   exec /usr/lib/omarchy-parent-addons/control dns "$@"
 else
   exec /usr/bin/sudo -k -- /usr/lib/omarchy-parent-addons/control dns "$@"

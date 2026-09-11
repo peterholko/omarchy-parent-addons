@@ -64,7 +64,7 @@ def main():
       raise ValueError(f'Install the {feature} backend package first')
     install(source, config / 'omarchy/plugins' / plugin_id, args.upgrade)
     print('Installed ' + plugin_id + '. Enable it with: omarchy plugin enable ' + plugin_id)
-    print('Open with: omarchy-shell shell summon ' + plugin_id)
+    print('Open with: omarchy parent ' + feature + ' ui')
   subprocess.run(['omarchy-shell', 'shell', 'rescanPlugins'], check=True)
   print('After upgrading an already loaded plugin, run: omarchy restart shell')
 

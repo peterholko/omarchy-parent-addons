@@ -5,27 +5,27 @@ import shutil
 import sys
 
 SOURCE = Path(__file__).resolve().parents[1]
-FEATURES = {'dns': ('DNS filtering', 'DNS'), 'browsing': ('Browsing history', 'History')}
+FEATURES = {'dns': 'DNS filtering', 'browsing': 'Browsing history'}
 BACKEND = 'https://github.com/peterholko/omarchy-parent-addons'
 
 
 def export(destination):
   destination = Path(destination)
   version = (SOURCE / 'VERSION').read_text().strip()
-  for feature, (title, label) in FEATURES.items():
+  for feature, title in FEATURES.items():
     plugin_id = 'io.github.peterholko.parent-' + feature
     root = destination / plugin_id
     root.mkdir(parents=True, exist_ok=True)
     manifest = {
       'schemaVersion': 1, 'id': plugin_id, 'name': title, 'version': version,
       'author': 'Peter Holko', 'description': title + ' for PR9750 child installations',
-      'kinds': ['panel', 'bar-widget'], 'keepLoaded': True,
-      'entryPoints': {'panel': 'Panel.qml', 'barWidget': 'BarWidget.qml'},
-      'barWidget': {'defaultSection': 'right'},
+      'kinds': ['panel'], 'keepLoaded': True,
+      'entryPoints': {'panel': 'Panel.qml'},
     }
     (root / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
-    for name in ('Panel.qml', 'ControlsView.qml', 'BarWidget.qml'):
-      text = (SOURCE / 'ui' / name).read_text().replace('@FEATURE@', feature).replace('@ID@', plugin_id).replace('@LABEL@', label)
+    (root / 'BarWidget.qml').unlink(missing_ok=True)
+    for name in ('Panel.qml', 'ControlsView.qml'):
+      text = (SOURCE / 'ui' / name).read_text().replace('@FEATURE@', feature)
       (root / name).write_text(text)
     shutil.copy2(SOURCE / 'LICENSE', root / 'LICENSE')
     shutil.copy2(SOURCE / 'SOURCE.json', root / 'SOURCE.json')
@@ -33,7 +33,7 @@ def export(destination):
 
 Omarchy Quattro plugin for a child installation configured by [PR9750](https://github.com/omacom/omarchy/pull/9750). It uses the existing OS parent password through polkit. No password is stored in the plugin.
 
-This repository contains the user interface. It requires the separately installed `omarchy-parent-addons-{feature}` and `omarchy-parent-addons-core` packages. The [current backend release]({BACKEND}/releases/tag/v{version}) includes matching package-based UI copies. Plugin v0.1.1 also works with the v0.1.0 backend; that backend does not need to be rebuilt for the panel visibility fix. The backend does not depend on the Omarchy Kids distribution or replace Omarchy. Linux installation and authentication checks are still pending; see the [validation record]({BACKEND}/blob/v{version}/VALIDATION.md).
+This repository contains an on-demand panel, with no bar or system tray widget. It requires the separately installed `omarchy-parent-addons-{feature}` and `omarchy-parent-addons-core` packages. The [current backend release]({BACKEND}/releases/tag/v{version}) includes the `omarchy parent {feature} ui` command and matching package-based UI copies. The backend does not depend on the Omarchy Kids distribution or replace Omarchy. Linux installation and authentication checks are still pending; see the [validation record]({BACKEND}/blob/v{version}/VALIDATION.md).
 
 ## Install
 
@@ -43,15 +43,14 @@ Then install this interface, still as the normal desktop user:
 
 ```bash
 omarchy plugin add https://github.com/peterholko/omarchy-parent-{feature}.git --enable
-omarchy bar put {plugin_id} --section right
-omarchy-shell shell summon {plugin_id}
+omarchy parent {feature} ui
 ```
 
-Accept Omarchy's plugin confirmation and select the right bar section when prompted. If you already have a package-based copy with this ID, remove that user interface with `omarchy plugin remove {plugin_id}` before adding the Git copy. This leaves the backend and its settings in place.
+Accept Omarchy's plugin confirmation. Enabling this panel does not place anything in the bar. If you already have a package-based copy with this ID, remove that user interface with `omarchy plugin remove {plugin_id}` before adding the Git copy. This leaves the backend and its settings in place.
 
 ## Enable and use
 
-Installing or enabling the plugin does not enable filtering or collection. Use the explicit controls inside its panel. Private reports require parent authentication and clear when the window closes or after two minutes. DNS filtering changes this laptop's resolver, firewall and supported browser policies. Browsing logs are opt-in; tell the child when collection is enabled.
+Open the panel as the desktop user with `omarchy parent {feature} ui`, without sudo. Opening it does not prompt for a password or enable filtering or collection. Use the explicit controls inside its panel. Private reports and settings changes require parent authentication; reports clear when the window closes or after two minutes. DNS filtering changes this laptop's resolver, firewall and supported browser policies. Browsing logs are opt-in; tell the child when collection is enabled.
 
 {'DNS requires an already active UFW firewall. It defaults to Cloudflare for Families upstream; Network DNS is available in the controls. Enable Denylist explicitly to begin filtering. Backend v0.1.2 also adds whole-domain denials to browser URL policies and clears the system DNS cache after list changes. Quit and reopen the browser after policy changes, and check URLBlocklist in chrome://policy or WebsiteFilter in about:policies. Existing pages and open connections are not automatically closed.' if feature == 'dns' else 'The first collection includes existing history, followed by collection every minute. Supported history databases are Chromium, Chrome, Brave, Edge and Firefox. The collector records URLs and titles; it does not capture every network request or establish time spent watching a video.'}
 
@@ -59,18 +58,23 @@ The [backend README]({BACKEND}#enable-features-explicitly) documents terminal co
 
 ## Upgrade
 
-Follow the [backend upgrade steps]({BACKEND}#upgrade) first when a release changes privileged code. Then update this interface:
+Follow the [backend upgrade steps]({BACKEND}#upgrade) for the new `ui` command, then update this interface:
 
 ```bash
 omarchy plugin update {plugin_id}
 omarchy restart shell
 ```
 
-A plugin update cannot upgrade its root-owned backend. Package-based UI copies use the backend release's `./plugins install {feature} --upgrade` instead of the Git updater.
+After the shell has reappeared, move an existing bar entry to a panel registration by disabling and re-enabling the updated plugin once:
 
-Version 0.1.1 fixes the bar button opening an invisible window. For existing Git installs with the v0.1.0 backend, the two commands above are sufficient for this fix.
+```bash
+omarchy plugin disable {plugin_id} &&
+omarchy plugin enable {plugin_id}
+```
 
-The DNS domain-blocking changes in v0.1.2 require the [backend upgrade]({BACKEND}#upgrade). Updating a shell plugin alone cannot change DNS behavior. Existing v0.1.1 interfaces can use the fixed v0.1.2 backend.
+This removes the old bar button and keeps the panel available to commands. DNS filtering and history collection continue with their existing settings. A plugin update cannot upgrade its root-owned backend. Package-based UI copies use the backend release's `./plugins install {feature} --upgrade` instead of the Git updater, followed by the same shell restart and disable/enable steps.
+
+The lower-level command `omarchy-shell shell summon {plugin_id}` also opens this panel and works with older backend packages. The DNS domain-blocking fix from v0.1.2 still requires a backend upgrade; updating only this interface cannot change DNS behavior.
 
 ## Disable and remove
 

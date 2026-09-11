@@ -30,7 +30,7 @@ Run these in a terminal as the normal desktop user (for example, `linnea`), with
 
 ```bash
 omarchy pkg add base-devel python
-git clone --branch v0.1.2 --depth 1 https://github.com/peterholko/omarchy-parent-addons.git
+git clone --branch v0.1.3 --depth 1 https://github.com/peterholko/omarchy-parent-addons.git
 cd omarchy-parent-addons
 ./test && ./build
 ```
@@ -50,18 +50,16 @@ Still as the normal desktop user, install the user interfaces from their reposit
 ```bash
 omarchy plugin add https://github.com/peterholko/omarchy-parent-dns.git --enable
 omarchy plugin add https://github.com/peterholko/omarchy-parent-browsing.git --enable
-omarchy bar put io.github.peterholko.parent-dns --section right
-omarchy bar put io.github.peterholko.parent-browsing --section right
 ```
 
-Only use the corresponding lines if you installed one feature. Accept Omarchy's plugin confirmation and select the right bar section when prompted. The final two commands ensure the buttons are placed there. The bar buttons open the controls. You can also open them directly:
+Only use the corresponding line if you installed one feature. Accept Omarchy's plugin confirmation. These are on-demand panels; enabling them does not add a bar or system tray widget. Open either panel as the desktop user, without sudo:
 
 ```bash
-omarchy-shell shell summon io.github.peterholko.parent-dns
-omarchy-shell shell summon io.github.peterholko.parent-browsing
+omarchy parent dns ui
+omarchy parent browsing ui
 ```
 
-The menus offer settings, status and reports. Each action opens the system parent authentication dialog. No password is collected or stored by these plugins. The interface clears reports when closed or after two minutes; an action already authorized continues independently of the panel.
+The commands open the existing settings and reports windows through the running Omarchy shell. Opening a panel does not request a password; settings changes and private reports open the system parent authentication dialog. No password is collected or stored by these plugins. The interface clears reports when closed or after two minutes; an action already authorized continues independently of the panel. Existing terminal actions such as `omarchy parent dns status` continue to authenticate in the terminal.
 
 ## Enable features explicitly
 
@@ -108,17 +106,15 @@ These commands leave disabled modules disabled. Shared Firefox policy ownership 
 
 ## Upgrade
 
-Version 0.1.2 adds whole-domain denials to browser policies and clears the system resolver cache when lists change. **This requires the backend upgrade; updating only the shell plugin cannot apply it.** From an existing Git checkout of this backend, run as the normal desktop user:
+Version 0.1.3 replaces the DNS and History bar buttons with panels opened by `omarchy parent dns ui` and `omarchy parent browsing ui`. Upgrade the backend packages to install these new command actions, then update the interfaces. From an existing Git checkout of this backend, run as the normal desktop user:
 
 ```bash
-git fetch origin tag v0.1.2
-git switch --detach v0.1.2
+git fetch origin tag v0.1.3 &&
+git switch --detach v0.1.3 &&
 ./test && ./build && ./install --upgrade
 ```
 
-The package upgrade reapplies an enabled DNS filter using its existing lists. An off filter stays off. Quit and reopen the browser afterward and verify `URLBlocklist` in `chrome://policy` or `WebsiteFilter` in `about:policies`. Existing v0.1.1 plugin interfaces work with this backend, so a plugin update is optional for this fix.
-
-Version 0.1.1 fixes DNS and History panels staying invisible when opened from the bar. If you already have the v0.1.0 backend and installed the Git plugins, update just the interfaces; no backend rebuild is needed for this fix:
+Update only the interfaces you have installed:
 
 ```bash
 omarchy plugin update io.github.peterholko.parent-dns
@@ -126,22 +122,24 @@ omarchy plugin update io.github.peterholko.parent-browsing
 omarchy restart shell
 ```
 
-Download the next published backend source release into a new directory, review its release notes, then run there:
+After the shell has reappeared, remove the old bar entries and register the updated plugins as panels:
 
 ```bash
-./test && ./build && ./install --upgrade
-omarchy plugin update io.github.peterholko.parent-dns
-omarchy plugin update io.github.peterholko.parent-browsing
-omarchy restart shell
+omarchy plugin disable io.github.peterholko.parent-dns &&
+omarchy plugin enable io.github.peterholko.parent-dns
+omarchy plugin disable io.github.peterholko.parent-browsing &&
+omarchy plugin enable io.github.peterholko.parent-browsing
 ```
 
-The backend installer updates the shared package and all previously installed features together. It requires the explicit `--upgrade` flag before replacing existing backend code. To add the second feature later, use `./install --upgrade browsing` or `./install --upgrade dns`. Settings, lists, enrollment and history survive.
+Run `omarchy parent dns ui` or `omarchy parent browsing ui` whenever you want the controls. Disabling and re-enabling the shell plugins changes only their desktop registration. The backend installer updates the shared package and all previously installed features together. It requires the explicit `--upgrade` flag before replacing existing backend code. To add the second feature later, use `./install --upgrade browsing` or `./install --upgrade dns`. Settings, lists, enrollment and history survive.
 
-Update only the plugins you have installed. The Git plugin updater presents changes for review. A plugin update changes only the user interface; the parent-authorized backend upgrade is separate.
+The Git plugin updater presents changes for review. A plugin update changes only the user interface; the parent-authorized backend upgrade is separate. The older commands `omarchy-shell shell summon io.github.peterholko.parent-dns` and `omarchy-shell shell summon io.github.peterholko.parent-browsing` remain available if you update the panels before the backend packages.
+
+This release includes v0.1.2's whole-domain browser blocking and system resolver cache fix. The package upgrade reapplies an enabled DNS filter using its existing lists. An off filter stays off. Quit and reopen the browser afterward and verify `URLBlocklist` in `chrome://policy` or `WebsiteFilter` in `about:policies`.
 
 ### Alternative: install plugins from the backend package
 
-For offline use or to keep the UI pinned to the exact backend release, run `./plugins install dns browsing` instead of the two `omarchy plugin add` commands, then enable each installed plugin with `omarchy plugin enable <id>`. These copies come from the root-owned package payload. Upgrade them with `./plugins install dns browsing --upgrade` after upgrading the backend. The installer refuses to overwrite local edits.
+For offline use or to keep the UI pinned to the exact backend release, run `./plugins install dns browsing` instead of the two `omarchy plugin add` commands, then enable each installed plugin with `omarchy plugin enable <id>`. These copies come from the root-owned package payload. Upgrade them with `./plugins install dns browsing --upgrade` after upgrading the backend, then restart the shell and perform the same disable/enable steps above to remove old bar entries. The installer refuses to overwrite local edits.
 
 Use one UI installation method per plugin. Package copies are not Git checkouts and cannot use `omarchy plugin update`. To switch an existing package copy to its Git repository, run `omarchy plugin remove <id>`, then the corresponding `omarchy plugin add` command above. This switch leaves the installed backend and its settings in place.
 
@@ -179,7 +177,7 @@ Settings, allow/deny lists and collected history are deliberately retained. Ther
 | Path | Ownership and purpose |
 | --- | --- |
 | `/usr/lib/omarchy-parent-addons/` | Package-owned backend code and service templates; root writable only |
-| `/usr/bin/omarchy-parent-dns`, `/usr/bin/omarchy-parent-browsing` | Fixed wrappers that dispatch through parent authentication |
+| `/usr/bin/omarchy-parent-dns`, `/usr/bin/omarchy-parent-browsing` | `ui` opens an unprivileged panel; backend actions dispatch through parent authentication |
 | `/etc/omarchy-parent-addons/` | Separate settings and lists; no writes to PR9750's `parent.conf` |
 | `/var/lib/omarchy-parent-addons/USER/browsing/` | Root-only history, enrollment and cursors |
 | `/run/omarchy-parent-addons/` | Runtime operation locks and DNS upstream state |

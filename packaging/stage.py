@@ -24,7 +24,7 @@ def stage(source, destination, feature):
       for name in ('dns-public-resolvers.list', 'dns-system.list', 'dns-system.deny'):
         mappings.append(('backend/default/' + name, 'usr/lib/omarchy-parent-addons/default/' + name, 0o644))
     plugin = 'io.github.peterholko.parent-' + feature
-    for name in ('manifest.json', 'Panel.qml', 'ControlsView.qml', 'BarWidget.qml', 'README.md', 'LICENSE'):
+    for name in ('manifest.json', 'Panel.qml', 'ControlsView.qml', 'README.md', 'LICENSE'):
       mappings.append(('dist/plugins/' + plugin + '/' + name, 'usr/share/omarchy-parent-addons/plugins/' + plugin + '/' + name, 0o644))
   for origin, target, mode in mappings:
     original, target = source / origin, destination / target
