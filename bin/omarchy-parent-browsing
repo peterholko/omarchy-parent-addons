@@ -1,0 +1,10 @@
+#!/bin/bash
+# omarchy:summary=Manage private browsing reports with the parent password
+# omarchy:args=<status|on|off|pages|videos> [DAYS] [--user NAME]
+# omarchy:requires-sudo=true
+set -euo pipefail
+if [[ ${1:-} == "--help" || ${1:-} == "-h" ]] || (( EUID == 0 )); then
+  exec /usr/lib/omarchy-parent-addons/control browsing "$@"
+else
+  exec /usr/bin/sudo -k -- /usr/lib/omarchy-parent-addons/control browsing "$@"
+fi

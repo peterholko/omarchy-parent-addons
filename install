@@ -1,0 +1,10 @@
+#!/bin/bash
+set -euo pipefail
+source_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+if [[ ${1:-} == "--help" || ${1:-} == "-h" ]]; then
+  exec python3 -I "$source_dir/packaging/install.py" --help
+elif (( EUID == 0 )); then
+  exec /usr/bin/python3 -I "$source_dir/packaging/install.py" "$@"
+else
+  exec sudo -k -- /usr/bin/python3 -I "$source_dir/packaging/install.py" "$@"
+fi

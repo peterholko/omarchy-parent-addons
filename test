@@ -1,0 +1,20 @@
+#!/bin/bash
+set -euo pipefail
+source_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+cd "$source_dir"
+export BASH_BIN="${BASH_BIN:-$(command -v bash)}"
+python3 packaging/export.py
+python3 -m unittest discover -s tests -v
+for file in build install plugins remove test backend/control backend/*.sh bin/* *.install; do
+  "$BASH_BIN" -n "$file"
+done
+for feature in dns browsing; do
+  if command -v omarchy-plugin-validate >/dev/null; then
+    omarchy-plugin-validate "dist/plugins/io.github.peterholko.parent-$feature"
+  elif [[ -x ../../bin/omarchy-plugin-validate ]]; then
+    "$BASH_BIN" ../../bin/omarchy-plugin-validate "dist/plugins/io.github.peterholko.parent-$feature"
+  else
+    echo "SKIP stock plugin validator: run this test on the Omarchy laptop."
+  fi
+done
+echo "Focused backend, packaging, and plugin validation finished. No system settings were changed."

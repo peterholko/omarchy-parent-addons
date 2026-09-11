@@ -1,0 +1,18 @@
+#!/bin/bash
+set -euo pipefail
+if (( $# == 0 )); then
+  echo "Usage: ./remove <dns|browsing> [...]" >&2
+  exit 1
+fi
+packages=()
+for feature in "$@"; do
+  case "$feature" in
+    dns|browsing) packages+=("omarchy-parent-addons-$feature") ;;
+    *) echo "Unknown add-on: $feature" >&2; exit 1 ;;
+  esac
+done
+# The AbortOnFail package hook restores owned settings before removal. It
+# leaves packages installed if restoration fails, and preserves history.
+sudo -k
+omarchy-pkg-drop "${packages[@]}"
+echo "Backend removed. Remove each user plugin with omarchy plugin remove io.github.peterholko.parent-FEATURE"

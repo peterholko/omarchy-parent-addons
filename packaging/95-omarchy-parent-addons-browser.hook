@@ -1,0 +1,15 @@
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = chromium
+Target = google-chrome
+Target = brave-bin
+Target = microsoft-edge-stable-bin
+Target = firefox
+Target = zen-browser-bin
+
+[Action]
+Description = Restore enabled standalone parent browser policies
+When = PostTransaction
+Exec = /usr/lib/omarchy-parent-addons/control reapply

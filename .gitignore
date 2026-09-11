@@ -1,0 +1,6 @@
+dist/
+pkg/
+src/
+*.pkg.tar.*
+__pycache__/
+test-output/

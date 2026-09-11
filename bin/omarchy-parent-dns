@@ -1,0 +1,10 @@
+#!/bin/bash
+# omarchy:summary=Manage the standalone DNS filter with the parent password
+# omarchy:args=<status|denylist|allowlist|off|allow|deny|remove|list|log|history|upstream|apply> [VALUE ...]
+# omarchy:requires-sudo=true
+set -euo pipefail
+if [[ ${1:-} == "--help" || ${1:-} == "-h" ]] || (( EUID == 0 )); then
+  exec /usr/lib/omarchy-parent-addons/control dns "$@"
+else
+  exec /usr/bin/sudo -k -- /usr/lib/omarchy-parent-addons/control dns "$@"
+fi

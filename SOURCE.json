@@ -1,0 +1,59 @@
+{
+  "repository": "https://github.com/peterholko/omarchy-kids",
+  "commit": "0228567ae984ee8dfbe9212d703c9c25d57f9502",
+  "targetPR": "https://github.com/omacom/omarchy/pull/9750",
+  "targetCommit": "56d2123dc93eafd3f0c5835b05d9019f9cf9748d",
+  "files": [
+    {
+      "path": "lib/parent/omarchy_kids/dns/command.sh",
+      "gitBlob": "26b55709f85a1abd2bbf56a589d57acac66d237a"
+    },
+    {
+      "path": "lib/parent/omarchy_kids/browsing/command.sh",
+      "gitBlob": "ce039c1b35daf0ee20744babd05d04149a76f0b7"
+    },
+    {
+      "path": "lib/parent/omarchy_kids/core/parent.sh",
+      "gitBlob": "9e68ee23128ec3ad1d5112bf220d1caad741fe9d"
+    },
+    {
+      "path": "lib/parent/omarchy_kids/core/files.py",
+      "gitBlob": "55b5586c9dce1273a6608ae82e90eb482da6751e"
+    },
+    {
+      "path": "default/parent/omarchy-kids-dns.service",
+      "gitBlob": "b85f051c6f59ff36ddb42b215422da3fa7b9846b"
+    },
+    {
+      "path": "default/parent/omarchy-kids-browsing.service",
+      "gitBlob": "38209ec28805cad5b92a856166d07eb07003bb32"
+    },
+    {
+      "path": "default/parent/omarchy-kids-browsing.timer",
+      "gitBlob": "d705a6efcde888b46a4882d5324dfccf1b17470f"
+    },
+    {
+      "path": "default/parent/dns-public-resolvers.list",
+      "gitBlob": "d90e09e4413429b3813e724f6e7bdf6867c45071"
+    },
+    {
+      "path": "default/parent/dns-system.list",
+      "gitBlob": "00892b62bb4636961479397d10a9f8b5c9081ef1"
+    },
+    {
+      "path": "default/parent/dns-system.deny",
+      "gitBlob": "fef296cc74e8850736d6afc1b3a669fbe03655d7"
+    },
+    {
+      "path": "LICENSE",
+      "gitBlob": "f12cfa766c55541c9d8e008e310c95a721e70a97"
+    }
+  ],
+  "adaptations": [
+    "Standalone package and plugin exports without the Kids base dependency.",
+    "Existing PR9750 parent/root authentication through sudo and polkit; no new password database.",
+    "Separate root-owned code, configuration, runtime state, and history paths.",
+    "Explicit opt-in, package removal restoration, and independent Firefox policy ownership.",
+    "Private browser database snapshots and fixed privileged command dispatch."
+  ]
+}

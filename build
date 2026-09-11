@@ -1,0 +1,20 @@
+#!/bin/bash
+set -euo pipefail
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+if (( EUID == 0 )); then
+  echo "Run ./build as your normal user. makepkg must not run as root." >&2
+  exit 1
+fi
+if [[ $(uname -s) != "Linux" ]] || ! command -v makepkg >/dev/null; then
+  echo "Build on the Omarchy laptop with base-devel and python installed." >&2
+  exit 1
+fi
+python3 packaging/export.py
+for feature in dns browsing; do
+  omarchy-plugin-validate "dist/plugins/io.github.peterholko.parent-$feature"
+done
+export PARENT_ADDONS_SOURCE="$PWD"
+mkdir -p dist/packages
+export PKGDEST="$PWD/dist/packages"
+makepkg --nodeps --clean --force
+python3 packaging/release.py

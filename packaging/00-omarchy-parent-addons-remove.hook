@@ -1,0 +1,12 @@
+[Trigger]
+Operation = Remove
+Type = Package
+Target = omarchy-parent-addons-dns
+Target = omarchy-parent-addons-browsing
+
+[Action]
+Description = Restore standalone parent integration before package removal
+When = PreTransaction
+Exec = /usr/lib/omarchy-parent-addons/control pre-remove
+NeedsTargets
+AbortOnFail
